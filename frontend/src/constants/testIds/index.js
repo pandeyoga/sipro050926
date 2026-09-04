@@ -130,3 +130,5 @@ export * from './p85';
 export * from './p89';
 // Fase 91 — dashboard keuangan interaktif, tab Piutang/Utang, riwayat dokumen terbit.
 export * from './p91';
+// Fase 92 — drill-down KPI Beranda, Pipeline Lead, Pembangunan.
+export * from './p92';

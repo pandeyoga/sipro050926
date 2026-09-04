@@ -13,6 +13,19 @@ Bahasa produk & komunikasi: **Indonesia**.
 - Kredensial uji: `/app/memory/test_credentials.md` (sandi demo `Sipro#2026`).
 
 ## Riwayat implementasi (terbaru di atas)
+### 4 Sep 2026 — Fase 92: Drill-down KPI Beranda, Pipeline Lead, Pembangunan — SELESAI
+- **Endpoint generik** `GET /drilldown/{key}` (`kpi_drilldown.py`, RBAC per kunci): tasks (scope/bucket/sla),
+  leads (stage/band/sla/idle_days/new_hours), deals, projects, units_qc_hold, punch_open, retention_held,
+  build:* (unscheduled/awaiting_verification/rework/late_items/blocked_items/at_risk/scheduled),
+  board:* (all/unscheduled/running/late/ready/progress/awaiting — memakai mesin papan unit yang sama),
+  kunci keuangan didelegasikan ke `finance_drilldown`. `GET /drilldown/_summary/leads` → 5 KPI lead.
+- **Beranda**: KPI `/work/home` membawa `drill_key`+`drill_params`; `KpiCard` prop `onOpen` → `DrilldownDialog`
+  (patterns) — baris tugas membuka TaskDetailSheet, lainnya navigasi.
+- **Pipeline Lead**: `LeadKpiStrip` (Lead baru 24 jam, Hot, Melewati SLA, Diam ≥7 hari, Won) → popup → profil lead.
+- **Pembangunan**: 6 kartu Papan Unit + Metric BuildMonitorPanel bisa diklik → popup → Unit 360 / UnitScheduleSheet.
+- Uji: iteration_139 — backend 37/37 (`tests/test_p92.py`) + frontend lulus.
+
+
 ### 4 Sep 2026 — Fase 91: Dashboard keuangan interaktif, tab Piutang/Utang, Dokumen Terbit — SELESAI
 - **91A Dashboard Keuangan interaktif**: kartu KPI & bucket aging bisa diklik → `KpiDrilldownDialog`
   (baris penyusun angka, klik baris → tabel terfilter, tombol "Buka tabel terfilter"); grafik

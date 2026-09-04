@@ -362,21 +362,25 @@ async def _kpis(user: dict, buckets: dict) -> list:
     email = user.get("email")
     c = {k: len(v) for k, v in buckets.items()}
     base = [{"label": "Terlambat", "value": c.get("overdue", 0), "tone": "rose",
-             "drill": "/tasks?tab=tasks&scope=mine&bucket=overdue"},
+             "drill": "/tasks?tab=tasks&scope=mine&bucket=overdue",
+             "drill_key": "tasks", "drill_params": {"scope": "mine", "bucket": "overdue"}},
             {"label": "Tugas Hari Ini", "value": c.get("today", 0), "tone": "amber",
-             "drill": "/tasks?tab=tasks&scope=mine&bucket=today"}]
+             "drill": "/tasks?tab=tasks&scope=mine&bucket=today",
+             "drill_key": "tasks", "drill_params": {"scope": "mine", "bucket": "today"}}]
     if role in ("sales",):
         leads_new = await db.leads.count_documents(
             {"org_id": org, "assigned_to": email, "stage": "acquisition"})
         deals_active = await db.deals.count_documents(
             {"org_id": org, "assigned_to": email, "status": {"$in": ["reserved", "booked", "active"]}})
         return [{"label": "Lead Baru", "value": leads_new, "tone": "primary",
-                 "drill": "/leads?stage=acquisition"},
+                 "drill": "/leads?stage=acquisition", "drill_key": "leads", "drill_params": {"stage": "acquisition"}},
                 *base,
                 {"label": "Deal Aktif", "value": deals_active, "tone": "indigo",
-                 "drill": "/customers?hub=deal&status=reserved,booked,active"},
+                 "drill": "/customers?hub=deal&status=reserved,booked,active",
+                 "drill_key": "deals", "drill_params": {"status": "reserved,booked,active", "mine": "1"}},
                 {"label": "Menunggu Verifikasi", "value": c.get("review", 0), "tone": "emerald",
-                 "drill": "/tasks?tab=tasks&scope=mine&bucket=review"}]
+                 "drill": "/tasks?tab=tasks&scope=mine&bucket=review",
+                 "drill_key": "tasks", "drill_params": {"scope": "mine", "bucket": "review"}}]
     if role in ("sales_manager", "marketing_admin", "dm_supervisor", "dm_staff"):
         leads_total = await db.leads.count_documents({"org_id": org})
         breached = await db.tasks.count_documents(
@@ -386,10 +390,12 @@ async def _kpis(user: dict, buckets: dict) -> list:
         soon = "/tasks?tab=tasks&scope=division&sla=breached" if wh.is_supervisor(user) \
             else "/tasks?tab=tasks&scope=mine&sla=breached"
         return [{"label": "Total Lead", "value": leads_total, "tone": "primary",
-                 "drill": "/leads"},
-                {"label": "SLA Terlampaui", "value": breached, "tone": "rose", "drill": soon},
+                 "drill": "/leads", "drill_key": "leads", "drill_params": {}},
+                {"label": "SLA Terlampaui", "value": breached, "tone": "rose", "drill": soon,
+                 "drill_key": "tasks", "drill_params": {"scope": "division" if wh.is_supervisor(user) else "mine", "sla": "breached"}},
                 {"label": "Booking", "value": deals_booked, "tone": "indigo",
-                 "drill": "/customers?hub=deal&status=booked,active,completed"},
+                 "drill": "/customers?hub=deal&status=booked,active,completed",
+                 "drill_key": "deals", "drill_params": {"status": "booked,active,completed"}},
                 *base]
     if role in ("finance", "finance_manager"):
         ar_out = await _sum("ar_invoices", {"org_id": org, "status": {"$ne": "paid"}}, "outstanding")
@@ -397,22 +403,22 @@ async def _kpis(user: dict, buckets: dict) -> list:
         ret_held = await _sum("ap_invoices", {"org_id": org}, "retention_held")
         ret_rel = await _sum("ap_invoices", {"org_id": org}, "retention_released")
         return [{"label": "AR Outstanding", "value": ar_out, "tone": "primary", "format": "idr",
-                 "drill": "/finance?tab=ar&status=unpaid,partial"},
+                 "drill": "/finance?tab=ar&status=unpaid,partial", "drill_key": "ar_outstanding", "drill_params": {}},
                 {"label": "AP Outstanding", "value": ap_out, "tone": "amber", "format": "idr",
-                 "drill": "/finance?tab=ap"},
+                 "drill": "/finance?tab=ap", "drill_key": "ap_outstanding", "drill_params": {}},
                 {"label": "Retensi Ditahan", "value": round(ret_held - ret_rel, 2),
-                 "tone": "indigo", "format": "idr", "drill": "/finance?tab=ap"},
+                 "tone": "indigo", "format": "idr", "drill": "/finance?tab=ap", "drill_key": "retention_held", "drill_params": {}},
                 *base]
     if role in ("project_manager", "site_engineer"):
         projects = await db.projects.count_documents({"org_id": org})
         qc_hold = await db.units.count_documents({"org_id": org, "construction_status": "qc_hold"})
         punch_open = await db.punch_items.count_documents(
             {"org_id": org, "status": {"$in": ["open", "in_progress"]}})
-        return [{"label": "Proyek", "value": projects, "tone": "primary", "drill": "/projects"},
+        return [{"label": "Proyek", "value": projects, "tone": "primary", "drill": "/projects", "drill_key": "projects", "drill_params": {}},
                 {"label": "QC Hold", "value": qc_hold, "tone": "rose",
-                 "drill": "/build?hub=unit&construction_status=qc_hold"},
+                 "drill": "/build?hub=unit&construction_status=qc_hold", "drill_key": "units_qc_hold", "drill_params": {}},
                 {"label": "Punch Terbuka", "value": punch_open, "tone": "indigo",
-                 "drill": "/build?hub=lapangan"},
+                 "drill": "/build?hub=lapangan", "drill_key": "punch_open", "drill_params": {}},
                 *base]
     # owner / super_admin — Control Tower (angka yang bisa ditindak)
     deals_month = await db.deals.count_documents(
@@ -422,15 +428,16 @@ async def _kpis(user: dict, buckets: dict) -> list:
     review_q = await db.tasks.count_documents({"org_id": org, "status": "submitted"})
     ar_out = await _sum("ar_invoices", {"org_id": org, "status": {"$ne": "paid"}}, "outstanding")
     return [{"label": "Booking (kumulatif)", "value": deals_month, "tone": "primary",
-             "drill": "/customers?hub=deal&status=booked,active,completed"},
+             "drill": "/customers?hub=deal&status=booked,active,completed",
+             "drill_key": "deals", "drill_params": {"status": "booked,active,completed"}},
             {"label": "AR Outstanding", "value": ar_out, "tone": "amber", "format": "idr",
-             "drill": "/finance?tab=ar&status=unpaid,partial"},
+             "drill": "/finance?tab=ar&status=unpaid,partial", "drill_key": "ar_outstanding", "drill_params": {}},
             {"label": "Tugas Terlambat (org)", "value": org_overdue, "tone": "rose",
-             "drill": "/tasks?tab=tasks&scope=all&bucket=overdue"},
+             "drill": "/tasks?tab=tasks&scope=all&bucket=overdue", "drill_key": "tasks", "drill_params": {"scope": "all", "bucket": "overdue"}},
             {"label": "Menunggu Verifikasi", "value": review_q, "tone": "indigo",
-             "drill": "/tasks?tab=tasks&scope=all&bucket=review"},
+             "drill": "/tasks?tab=tasks&scope=all&bucket=review", "drill_key": "tasks", "drill_params": {"scope": "all", "bucket": "review"}},
             {"label": "Tugas Saya Hari Ini", "value": c.get("today", 0), "tone": "emerald",
-             "drill": "/tasks?tab=tasks&scope=mine&bucket=today"}]
+             "drill": "/tasks?tab=tasks&scope=mine&bucket=today", "drill_key": "tasks", "drill_params": {"scope": "mine", "bucket": "today"}}]
 
 
 @router.get("/home")

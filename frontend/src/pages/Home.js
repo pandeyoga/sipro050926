@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { ListChecks, Bell, Sparkles, Users2, AlertTriangle, Hourglass, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import KpiCard from "@/components/patterns/KpiCard";
+import DrilldownDialog from "@/components/patterns/DrilldownDialog";
 import MoneyText from "@/components/patterns/MoneyText";
 import NBACard from "@/components/patterns/NBACard";
 import TaskInbox from "@/components/work/TaskInbox";
@@ -38,6 +39,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [openTask, setOpenTask] = useState(null);
+  const [drill, setDrill] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -120,6 +122,7 @@ export default function Home() {
           {(data?.kpis || []).map((k) => (
             <KpiCard key={k.label} label={k.label} tone={k.tone} hint={k.hint} to={k.drill}
               testId={KPI.card}
+              onOpen={k.drill_key ? () => setDrill({ key: k.drill_key, params: k.drill_params || {}, label: k.label }) : null}
               value={k.format === "idr"
                 ? <MoneyText value={k.value} short className="font-heading" /> : k.value} />
           ))}
@@ -183,6 +186,8 @@ export default function Home() {
 
       <TaskDetailSheet taskId={openTask} open={!!openTask}
         onOpenChange={(v) => !v && setOpenTask(null)} onChanged={load} />
+      <DrilldownDialog target={drill} onOpenChange={(o) => { if (!o) setDrill(null); }}
+        onRow={(r) => (r.task_id ? setOpenTask(r.task_id) : navigate(r.href))} />
     </div>
   );
 }

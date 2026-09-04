@@ -6,6 +6,18 @@ import { Button } from "@/components/ui/button";
 import DataTable from "@/components/patterns/DataTable";
 import FilterBar from "@/components/patterns/FilterBar";
 import MetricCard from "@/components/patterns/MetricCard";
+import DrilldownDialog from "@/components/patterns/DrilldownDialog";
+import { P92 } from "@/constants/testIds";
+
+/** Kartu KPI papan unit yang bisa diklik → popup daftar unit (Fase 92). */
+function Kpi({ id, onOpen, label, ...card }) {
+  return (
+    <button type="button" data-testid={`${P92.buildMetric}-${id}`} onClick={() => onOpen(id, label)}
+      className="group rounded-xl text-left outline-none transition-transform focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99]">
+      <MetricCard label={label} {...card} className="h-full ring-1 ring-transparent group-hover:ring-primary/50" />
+    </button>
+  );
+}
 import StatusPill from "@/components/patterns/StatusPill";
 import BuildMonitorPanel from "@/components/construction/BuildMonitorPanel";
 import ProjectPhasesPanel from "@/components/construction/ProjectPhasesPanel";
@@ -70,6 +82,8 @@ export default function UnitBoardTab({ projectId: fixedProject = null }) {
   }, []);
 
   const s = data?.summary;
+  const [drill, setDrill] = useState(null);
+  const openDrill = (id, label) => setDrill({ key: `board:${id}`, label, params: params.project_id ? { project_id: params.project_id } : {} });
   const mode = data?.mode || {};
   const columns = useMemo(() => [
     {
@@ -227,21 +241,22 @@ export default function UnitBoardTab({ projectId: fixedProject = null }) {
       {s ? (
         <div data-testid={UNIT_BOARD.summary}
           className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-          <MetricCard label="Unit" value={s.units_total} tone="primary" />
-          <MetricCard label="Sudah dijadwalkan" value={s.scheduled} tone="indigo"
+          <Kpi id="all" onOpen={openDrill} label="Unit" value={s.units_total} tone="primary" />
+          <Kpi id="unscheduled" onOpen={openDrill} label="Sudah dijadwalkan" value={s.scheduled} tone="indigo"
             hint={`${s.unscheduled} belum dijadwalkan`} />
-          <MetricCard label="Sedang berjalan" value={s.running} tone="sky" />
-          <MetricCard label="Telat" value={s.late} tone="rose"
+          <Kpi id="running" onOpen={openDrill} label="Sedang berjalan" value={s.running} tone="sky" />
+          <Kpi id="late" onOpen={openDrill} label="Telat" value={s.late} tone="rose"
             hint={`${s.awaiting_verification} menunggu verifikasi`} />
-          <MetricCard label="Siap dimulai" value={s.ready_to_start} tone="emerald"
+          <Kpi id="ready" onOpen={openDrill} label="Siap dimulai" value={s.ready_to_start} tone="emerald"
             hint={`${s.warning_to_start} perlu konfirmasi`} />
-          <MetricCard label="Rata-rata progres"
+          <Kpi id="progress" onOpen={openDrill} label="Rata-rata progres"
             value={s.avg_progress === null ? "belum ada data" : `${s.avg_progress}%`}
             tone="amber"
             hint={s.avg_planned === null ? "rencana belum ada"
               : `rencana ${s.avg_planned}% · hanya unit terjadwal`} />
         </div>
       ) : null}
+      <DrilldownDialog target={drill} onOpenChange={(o) => { if (!o) setDrill(null); }} />
 
       <DataTable testId={UNIT_BOARD.table} testIds={{ row: UNIT_BOARD.row }}
         columns={columns} rows={data?.data || []} total={data?.total || 0}

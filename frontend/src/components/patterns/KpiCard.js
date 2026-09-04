@@ -25,7 +25,7 @@ const TONE = {
 
 export default function KpiCard({
   label, value, hint, delta = null, tone = "primary", icon: Icon = null, to = null,
-  drillLabel = "Lihat daftar", testId, className,
+  drillLabel = "Lihat daftar", testId, className, onOpen = null,
 }) {
   const t = TONE[tone] || TONE.primary;
   const body = (
@@ -57,9 +57,9 @@ export default function KpiCard({
         ) : null}
         {hint ? <span className="truncate text-xs text-muted-foreground">{hint}</span> : null}
       </div>
-      {to ? (
+      {to || onOpen ? (
         <span className="mt-2.5 inline-flex items-center gap-1 text-xs font-semibold text-primary">
-          {drillLabel}
+          {onOpen ? "Lihat rincian" : drillLabel}
           <ArrowUpRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
         </span>
       ) : null}
@@ -68,9 +68,18 @@ export default function KpiCard({
 
   const base = cn("group relative block overflow-hidden rounded-xl border border-border bg-card p-4 pt-4 text-left shadow-[var(--shadow-card)]",
     "transition-[box-shadow,border-color,transform] duration-150",
-    to && "hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[var(--shadow-raised)]",
+    (to || onOpen) && "hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[var(--shadow-raised)]",
     className);
 
+  // Fase 92: `onOpen` → kartu menjadi tombol yang membuka popup rincian (bukan tautan).
+  if (onOpen) {
+    return (
+      <button type="button" onClick={onOpen} data-testid={testId || KPI.card} data-drill={to || undefined}
+        className={cn(base, "w-full")}>
+        {body}
+      </button>
+    );
+  }
   if (!to) {
     return <div data-testid={testId || KPI.card} className={base}>{body}</div>;
   }

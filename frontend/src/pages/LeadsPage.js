@@ -9,6 +9,7 @@ import FilterBar from "@/components/patterns/FilterBar";
 import AgingCell from "@/components/patterns/AgingCell";
 import StatusPill from "@/components/patterns/StatusPill";
 import AssignLeadsDialog from "@/components/leads/AssignLeadsDialog";
+import LeadKpiStrip from "@/components/leads/LeadKpiStrip";
 import AddLeadDialog from "@/components/sales/AddLeadDialog";
 import SimulateLeadDialog from "@/components/sales/SimulateLeadDialog";
 import useListQuery from "@/hooks/useListQuery";
@@ -193,6 +194,9 @@ export default function LeadsPage() {
           </Button>
         </div>
       </div>
+
+      {/* Fase 92 — kartu KPI pipeline: klik → popup daftar lead → buka profil */}
+      <LeadKpiStrip refreshKey={data?.total} />
 
       {/* Pipeline strip = filter tahap sekali klik (angka = jumlah dalam cakupan Anda) */}
       <div data-testid={LEADS.pipeline} className="flex flex-wrap gap-2">

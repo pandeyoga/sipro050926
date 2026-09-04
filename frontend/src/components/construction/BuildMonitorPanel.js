@@ -19,8 +19,9 @@ import BulkShiftDialog from "@/components/construction/BulkShiftDialog";
 import BulkRunsPanel from "@/components/construction/BulkRunsPanel";
 import UnitScheduleSheet from "@/components/construction/UnitScheduleSheet";
 import MetricCard from "@/components/patterns/MetricCard";
+import DrilldownDialog from "@/components/patterns/DrilldownDialog";
 import api from "@/services/apiClient";
-import { BUILD } from "@/constants/testIds";
+import { BUILD, P92 } from "@/constants/testIds";
 
 /**
  * MONITORING UNIT — papan pantau pembangunan per rumah.
@@ -41,6 +42,8 @@ export default function BuildMonitorPanel({ projectId }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [openUnit, setOpenUnit] = useState(null);
+  const [drill, setDrill] = useState(null);
+  const openDrill = (sub, label) => setDrill({ key: `build:${sub}`, label, params: projectId ? { project_id: projectId } : {} });
   const [genOpen, setGenOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [shiftOpen, setShiftOpen] = useState(false);
@@ -105,26 +108,33 @@ export default function BuildMonitorPanel({ projectId }) {
     <div data-testid={BUILD.monitorPanel} className="space-y-4">
       {summary ? (
         <div data-testid={BUILD.summary} className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-          <Metric icon={HardHat} label="Rumah terjadwal"
+          <Metric icon={HardHat} label="Rumah terjadwal" testId={`${P92.buildMetric}-scheduled`}
+            onOpen={() => openDrill(summary.unscheduled ? "unscheduled" : "scheduled", summary.unscheduled ? "Unit belum dijadwalkan" : "Unit terjadwal")}
             value={`${summary.scheduled}/${summary.units_total}`}
             hint={summary.unscheduled ? `${summary.unscheduled} belum dijadwalkan` : "lengkap"}
             tone={summary.unscheduled ? "amber" : "emerald"} />
-          <Metric icon={Gauge} label="Progres rata-rata"
+          <Metric icon={Gauge} label="Progres rata-rata" testId={`${P92.buildMetric}-progress`}
+            onOpen={() => openDrill("scheduled", "Progres per unit")}
             value={`${summary.avg_progress}%`}
             hint={`rencana ${summary.avg_planned}%`}
             tone={summary.avg_progress + 5 < summary.avg_planned ? "rose" : "emerald"} />
-          <Metric icon={ClipboardCheck} label="Menunggu verifikasi"
+          <Metric icon={ClipboardCheck} label="Menunggu verifikasi" testId={`${P92.buildMetric}-awaiting`}
+            onOpen={() => openDrill("awaiting_verification", "Pekerjaan menunggu verifikasi")}
             value={summary.awaiting_verification}
             hint={summary.rework ? `${summary.rework} minta perbaikan` : "tidak ada perbaikan"}
             tone={summary.awaiting_verification ? "sky" : "slate"} />
-          <Metric icon={TimerOff} label="Pekerjaan telat" value={summary.late_items}
+          <Metric icon={TimerOff} label="Pekerjaan telat" value={summary.late_items} testId={`${P92.buildMetric}-late`}
+            onOpen={() => openDrill("late_items", "Pekerjaan telat")}
             hint={`${summary.at_risk} unit berisiko`}
             tone={summary.late_items ? "rose" : "emerald"} />
-          <Metric icon={Lock} label="Tertahan gerbang" value={summary.blocked_items}
+          <Metric icon={Lock} label="Tertahan gerbang" value={summary.blocked_items} testId={`${P92.buildMetric}-blocked`}
+            onOpen={() => openDrill("blocked_items", "Pekerjaan tertahan gerbang")}
             hint={summary.overrides ? `${summary.overrides} pernah diterobos` : "tanpa override"}
             tone={summary.overrides ? "rose" : "slate"} />
         </div>
       ) : null}
+      <DrilldownDialog target={drill} onOpenChange={(o) => { if (!o) setDrill(null); }}
+        onRow={(r) => { const m = /\/units\/([^/?]+)/.exec(r.href || ""); if (m) setOpenUnit(m[1]); }} />
 
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-card p-2.5 shadow-[var(--shadow-card)]">
         <div className="flex flex-wrap items-center gap-2">
@@ -257,11 +267,20 @@ const TONE = {
   sky: "text-sky-700", slate: "text-muted-foreground",
 };
 
-function Metric({ icon: Icon, label, value, hint, tone = "slate" }) {
+function Metric({ icon: Icon, label, value, hint, tone = "slate", onOpen, testId }) {
   // Satu bentuk kartu angka untuk seluruh aplikasi (lihat patterns/MetricCard):
   // nada warna di sini melekat pada KETERANGAN, bukan pada angkanya.
-  return (
+  // Fase 92: bila `onOpen` diberikan, kartu menjadi tombol → popup rincian.
+  const card = (
     <MetricCard icon={Icon} label={label} value={value} hint={hint}
-      hintTone={TONE[tone]} tone="text-foreground" testId={undefined} />
+      hintTone={TONE[tone]} tone="text-foreground" testId={undefined}
+      className={onOpen ? "h-full ring-1 ring-transparent group-hover:ring-primary/50" : undefined} />
+  );
+  if (!onOpen) return card;
+  return (
+    <button type="button" onClick={onOpen} data-testid={testId}
+      className="group rounded-xl text-left outline-none transition-transform focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99]">
+      {card}
+    </button>
   );
 }
