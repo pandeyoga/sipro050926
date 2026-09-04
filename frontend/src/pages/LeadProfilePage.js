@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  CalendarCheck2, ClipboardList, FileSignature, FileText, Handshake, History,
+  CalendarCheck2, ClipboardList, FileOutput, FileSignature, FileText, Handshake, History,
   MessageSquare, Phone, ShieldCheck, ShieldOff, UserCircle2,
 } from "lucide-react";
 
@@ -11,6 +11,7 @@ import TabPage from "@/components/patterns/TabPage";
 import AgingCell from "@/components/patterns/AgingCell";
 import StatusPill from "@/components/patterns/StatusPill";
 import DocChecklist from "@/components/patterns/DocChecklist";
+import IssuedDocsTab from "@/components/docs/IssuedDocsTab";
 import LeadWaPanel from "@/components/sales/LeadWaPanel";
 import LeadSummaryTab from "@/components/leads/LeadSummaryTab";
 import LeadTimelineTab from "@/components/leads/LeadTimelineTab";
@@ -235,6 +236,10 @@ export default function LeadProfilePage() {
           key: "dokumen", label: "Dokumen", icon: FileText,
           badge: honestBadge(panels.submissions, docCount),
           content: <DocChecklist entityType="lead" entityId={id} onChanged={refresh} />,
+        },
+        {
+          key: "terbit", label: "Dokumen Terbit", icon: FileOutput,
+          content: <IssuedDocsTab entityType="lead" entityId={id} />,
         },
         {
           key: "survey", label: "Survey", icon: CalendarCheck2,

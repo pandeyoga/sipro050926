@@ -94,6 +94,7 @@ from routers.broadcasts_router import router as broadcasts_router
 from routers.orgs_router import router as orgs_router
 from routers.reference_router import router as reference_router
 from routers.master_router import router as master_router
+from routers.doc_history_router import router as doc_history_router
 from routers.site_plan_router import router as site_plan_router
 from routers.petty_cash_router import router as petty_cash_router
 from routers.fixed_assets_router import router as fixed_assets_router
@@ -398,6 +399,7 @@ api.include_router(broadcasts_router)
 api.include_router(orgs_router)
 api.include_router(reference_router)
 api.include_router(master_router)
+api.include_router(doc_history_router)
 api.include_router(site_plan_router)
 api.include_router(petty_cash_router)
 api.include_router(fixed_assets_router)

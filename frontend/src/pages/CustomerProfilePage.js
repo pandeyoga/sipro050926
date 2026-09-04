@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  Building2, CreditCard, FileText, Headset, History, Receipt, ScrollText, ShieldOff,
+  Building2, CreditCard, FileOutput, FileText, Headset, History, Receipt, ScrollText, ShieldOff,
   UserCircle2,
 } from "lucide-react";
 
+import IssuedDocsTab from "@/components/docs/IssuedDocsTab";
 import { Button } from "@/components/ui/button";
 import EntityHeader from "@/components/patterns/EntityHeader";
 import TabPage from "@/components/patterns/TabPage";
@@ -248,6 +249,10 @@ export default function CustomerProfilePage() {
           badge: honestBadge(panels.submissions,
             subs.filter((s) => s.status === "verified").length),
           content: <DocChecklist entityType="customer" entityId={id} onChanged={load} />,
+        },
+        {
+          key: "terbit", label: "Dokumen Terbit", icon: FileOutput,
+          content: <IssuedDocsTab entityType="customer" entityId={id} />,
         },
         {
           key: "unit", label: "Unit & Konstruksi", icon: Building2,

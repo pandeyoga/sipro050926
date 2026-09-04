@@ -160,6 +160,14 @@
         @apply sticky right-0 z-10 bg-card;
         box-shadow: -12px 0 12px -12px hsl(222 47% 11% / 0.25);
     }
+    /* Sel aksi yang menempel harus mengikuti warna baris (selang-seling & hover) —
+       sebelumnya selalu putih sehingga baris genap terlihat "terpotong". */
+    tr:nth-child(even) > .col-actions {
+        background-color: color-mix(in srgb, hsl(var(--surface-sunken)) 40%, hsl(var(--card)));
+    }
+    tr:hover > .col-actions {
+        background-color: color-mix(in srgb, hsl(var(--accent)) 60%, hsl(var(--card)));
+    }
     .col-actions-head {
         @apply sticky right-0 z-10;
         background-color: hsl(var(--surface-sunken));

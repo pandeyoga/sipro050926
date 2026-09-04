@@ -13,6 +13,26 @@ Bahasa produk & komunikasi: **Indonesia**.
 - Kredensial uji: `/app/memory/test_credentials.md` (sandi demo `Sipro#2026`).
 
 ## Riwayat implementasi (terbaru di atas)
+### 4 Sep 2026 — Fase 91: Dashboard keuangan interaktif, tab Piutang/Utang, Dokumen Terbit — SELESAI
+- **91A Dashboard Keuangan interaktif**: kartu KPI & bucket aging bisa diklik → `KpiDrilldownDialog`
+  (baris penyusun angka, klik baris → tabel terfilter, tombol "Buka tabel terfilter"); grafik
+  `AgingChart` (recharts, AR vs AP, klik batang → rincian). Backend `GET /finance/drilldown/{key}`
+  (`finance_drilldown.py`; key ar_outstanding, ar_overdue, ar_bucket, ap_outstanding, ap_pending,
+  ap_bucket, contract_liability, customer_deposits, revenue_recognized).
+- **91B Bug UI tabel**: `.col-actions` sticky kini mengikuti warna baris genap/hover (color-mix).
+- **91C Penagihan**: baris tabel & tombol Detail membuka `ArDetailSheet`.
+- **91D Tab gabungan**: FinancePage → Dashboard, Arus Kas, **Piutang** (Daftar Piutang, Penagihan,
+  Titipan, Keringanan Denda, Pembatalan & Refund), **Utang** (Tagihan Vendor AP, Utang Refund,
+  Komisi, Upah Harian), Rekonsiliasi Bank, Laporan, Konfigurasi. URL lama `?tab=ar|ap|…` dipetakan
+  (LEGACY) ke `?tab=receivables|payables&sub=…`.
+- **91E Dokumen Terbit** (tab baru di profil lead & customer, `IssuedDocsTab`): riwayat dokumen
+  per deal per tahap (Booking → SPR & Dokumen Owner → Tagihan & Kwitansi → Pajak & Biaya All-in →
+  Legal → BAST) dengan status tahap, PDF, aksi cepat (POST generate template owner / tautan) dan
+  alasan bila belum bisa terbit. Backend `GET /doc-history/{lead|customer}/{id}` (`doc_history.py`).
+- Uji: iteration_138 — backend 18/18 (`backend/tests/test_p91.py`) + frontend lulus. Catatan:
+  dashboard modul lain (Beranda, Lead, Pembangunan) menyusul bertahap (backlog P1).
+
+
 ### 4 Sep 2026 — Fase 90: Lanjutan dari repo GitHub (pandeyoga/sipro05) + catatan minor Fase 89 — SELESAI
 - **Setup**: repo di-clone ke /app (rsync tanpa .env), `.env` backend dipulihkan (MONGO_URL, DB_NAME,
   CORS_ORIGINS, JWT_SECRET baru, COOKIE_SECURE), deps backend/frontend dipasang,

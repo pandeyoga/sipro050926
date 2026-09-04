@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { BellRing, Gavel, CheckCircle2 } from "lucide-react";
+import { BellRing, Gavel, CheckCircle2, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
@@ -10,7 +10,8 @@ import EmptyState from "@/components/patterns/EmptyState";
 import { LoadingCards, ErrorState } from "@/components/patterns/StateViews";
 import { formatIDR, formatDateWIB } from "@/utils/formatters";
 import api from "@/services/apiClient";
-import { FINANCE } from "@/constants/testIds";
+import ArDetailSheet from "@/components/finance/ArDetailSheet";
+import { FINANCE, P91 } from "@/constants/testIds";
 import RefLabel from "@/components/patterns/RefLabel";
 
 const BUCKET_BADGE = {
@@ -24,6 +25,7 @@ export default function CollectionsPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
+  const [detailDealId, setDetailDealId] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -93,7 +95,9 @@ export default function CollectionsPanel() {
             </TableHeader>
             <TableBody>
               {rows.map((r) => (
-                <TableRow key={r.deal_id} data-testid={FINANCE.collectionRow}>
+                <TableRow key={r.deal_id} data-testid={FINANCE.collectionRow} data-deal={r.deal_id}
+                  className="cursor-pointer" onClick={() => setDetailDealId(r.deal_id)}
+                  title="Klik untuk membuka rincian termin & riwayat pembayaran">
                   <TableCell className="font-medium">{r.unit_code || "-"}</TableCell>
                   <TableCell>
                     <div>{r.lead_name || "-"}</div>
@@ -110,7 +114,11 @@ export default function CollectionsPanel() {
                     {r.reminded_at ? <div className="mt-0.5 text-[10px] text-muted-foreground">Diingatkan {formatDateWIB(r.reminded_at)}</div> : null}
                   </TableCell>
                   <TableCell className="col-actions">
-                    <div className="flex justify-end gap-1.5">
+                    <div className="flex justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                      <Button size="sm" variant="ghost" data-testid={P91.collectionRowDetail}
+                        onClick={() => setDetailDealId(r.deal_id)}>
+                        <Eye className="mr-1 h-3.5 w-3.5" /> Detail
+                      </Button>
                       <Button size="sm" variant="outline" data-testid={FINANCE.remindBtn}
                         onClick={() => remind(r)} disabled={busy === r.deal_id + ":remind"}>
                         <BellRing className="mr-1 h-3.5 w-3.5" /> Ingatkan
@@ -130,6 +138,8 @@ export default function CollectionsPanel() {
         </div>
       )}
       <p className="text-[11px] italic text-muted-foreground">{data.note}</p>
+      <ArDetailSheet dealId={detailDealId} open={!!detailDealId}
+        onOpenChange={(v) => !v && setDetailDealId(null)} onChanged={load} />
     </div>
   );
 }

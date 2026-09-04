@@ -15,37 +15,68 @@ import ReportsPanel from "@/components/finance/ReportsPanel";
 import ConfigPanel from "@/components/finance/ConfigPanel";
 import BankReconciliationTab from "@/components/finance/BankReconciliationTab";
 import LaborPayrollPanel from "@/components/labor/LaborPayrollPanel";
-// Fase 56C — daftar pembatalan & utang refund: yang memutuskan dan yang membayar bekerja
-// dari sisi uang, bukan dari sisi satu pembeli.
 import CancellationsPanel from "@/components/finance/CancellationsPanel";
-// Fase 59 — laporan keringanan denda (rapat direksi) & utang refund 2-1460 bertanggal.
 import LateFeeWaiverReport from "@/components/finance/LateFeeWaiverReport";
 import RefundDebtPanel from "@/components/finance/RefundDebtPanel";
-import { FINANCE, BANK, LABOR, P56, P59 } from "@/constants/testIds";
-
-const TABS = ["dashboard", "cashflow", "ar", "deposits", "collections", "waivers", "ap",
-  "commissions", "bank", "labor", "cancellations", "refund-debt", "reports", "config"];
+import { FINANCE, BANK, LABOR, P56, P59, P91 } from "@/constants/testIds";
 
 /**
- * FinancePage (`/finance`) — satu route dengan Tabs internal; tiap panel memuat datanya
- * sendiri (loading/empty/error) agar file tetap ramping dan lulus guardrails.
- *
- * Fase 40d: tab aktif HIDUP DI URL (`?tab=ar`). Tanpa itu, KPI “AR Outstanding” di Beranda
- * tidak mungkin mendarat di tab yang benar (dulu selalu jatuh ke Dashboard, lalu pemakai
- * harus mencari sendiri tab & filternya) — dan tautan seperti “lihat piutang belum bayar”
- * tidak bisa dibagikan ke rekan.
+ * Fase 91 — semua yang bersifat PIUTANG berkumpul di satu halaman "Piutang" (sub-bagian:
+ * Daftar AR, Penagihan, Titipan, Keringanan Denda, Pembatalan & Refund) dan semua yang
+ * bersifat UTANG di halaman "Utang" (Tagihan AP, Utang Refund, Komisi, Upah Harian).
+ * Tautan lama `?tab=ar|deposits|collections|waivers|cancellations|ap|refund-debt|commissions|labor`
+ * tetap hidup lewat pemetaan LEGACY.
  */
+const RECEIVABLE_SUBS = [
+  { key: "ar", label: "Daftar Piutang", testId: FINANCE.tabAr, content: <ArPanel /> },
+  { key: "collections", label: "Penagihan", testId: FINANCE.tabCollections,
+    content: <div className="space-y-6"><CollectionsPanel /><TrancheReminderPanel /><LateFeeAutoPanel /></div> },
+  { key: "deposits", label: "Titipan", testId: FINANCE.tabDeposits, content: <DepositPanel /> },
+  { key: "waivers", label: "Keringanan Denda", testId: P59.waiverTabReport, content: <LateFeeWaiverReport /> },
+  { key: "cancellations", label: "Pembatalan & Refund", testId: P56.financeTab, content: <CancellationsPanel /> },
+];
+const PAYABLE_SUBS = [
+  { key: "ap", label: "Tagihan Vendor (AP)", testId: FINANCE.tabAp, content: <ApPanel /> },
+  { key: "refund-debt", label: "Utang Refund", testId: P59.refundTab, content: <RefundDebtPanel /> },
+  { key: "commissions", label: "Komisi", testId: FINANCE.tabCommissions, content: <CommissionsPanel /> },
+  { key: "labor", label: "Upah Harian", testId: LABOR.payrollTab, content: <LaborPayrollPanel mode="finance" /> },
+];
+const LEGACY = Object.fromEntries([
+  ...RECEIVABLE_SUBS.map((s) => [s.key, ["receivables", s.key]]),
+  ...PAYABLE_SUBS.map((s) => [s.key, ["payables", s.key]]),
+]);
+const TABS = ["dashboard", "cashflow", "receivables", "payables", "bank", "reports", "config"];
+const CLEAR_KEYS = ["skip", "q", "status", "sort", "direction", "created_from", "created_to"];
+
+function SubTabs({ subs, active, onChange, group }) {
+  return (
+    <Tabs value={active} onValueChange={onChange}>
+      <TabsList className="flex-wrap bg-transparent p-0 gap-1">
+        {subs.map((s) => (
+          <TabsTrigger key={s.key} value={s.key} data-testid={s.testId} data-subtab={`${P91.subTab}-${group}-${s.key}`}
+            className="rounded-full border data-[state=active]:border-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+            {s.label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+      {subs.map((s) => <TabsContent key={s.key} value={s.key} className="mt-4">{s.content}</TabsContent>)}
+    </Tabs>
+  );
+}
+
 export default function FinancePage() {
   const [params, setParams] = useSearchParams();
   const wanted = params.get("tab");
-  const active = TABS.includes(wanted) ? wanted : "dashboard";
+  const legacy = LEGACY[wanted];
+  const active = legacy ? legacy[0] : (TABS.includes(wanted) ? wanted : "dashboard");
+  const sub = legacy ? legacy[1] : params.get("sub");
+  const subOf = (subs) => (subs.some((s) => s.key === sub) ? sub : subs[0].key);
 
-  const onTab = (value) => {
+  const setTab = (value, subValue) => {
     const next = new URLSearchParams(params);
     next.set("tab", value);
-    // Filter/paginasi milik tab lain tidak boleh terbawa ke tab baru.
-    ["skip", "q", "status", "sort", "direction", "created_from", "created_to"]
-      .forEach((k) => next.delete(k));
+    if (subValue) next.set("sub", subValue); else next.delete("sub");
+    CLEAR_KEYS.forEach((k) => next.delete(k));
     setParams(next, { replace: false });
   };
 
@@ -56,50 +87,28 @@ export default function FinancePage() {
         <h1 className="page-title">Keuangan</h1>
       </div>
 
-      <Tabs value={active} onValueChange={onTab}>
+      <Tabs value={active} onValueChange={(v) => setTab(v)}>
         <TabsList className="flex-wrap">
           <TabsTrigger data-testid={FINANCE.tabDashboard} value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger data-testid={FINANCE.tabCashflow} value="cashflow">Arus Kas</TabsTrigger>
-          <TabsTrigger data-testid={FINANCE.tabAr} value="ar">Piutang (AR)</TabsTrigger>
-          <TabsTrigger data-testid={FINANCE.tabDeposits} value="deposits">Titipan</TabsTrigger>
-          <TabsTrigger data-testid={FINANCE.tabCollections} value="collections">Penagihan</TabsTrigger>
-          <TabsTrigger data-testid={P59.waiverTabReport} value="waivers">
-            Keringanan Denda
-          </TabsTrigger>
-          <TabsTrigger data-testid={FINANCE.tabAp} value="ap">Utang (AP)</TabsTrigger>
-          <TabsTrigger data-testid={FINANCE.tabCommissions} value="commissions">Komisi</TabsTrigger>
+          <TabsTrigger data-testid={P91.tabReceivables} value="receivables">Piutang</TabsTrigger>
+          <TabsTrigger data-testid={P91.tabPayables} value="payables">Utang</TabsTrigger>
           <TabsTrigger data-testid={BANK.tab} value="bank">Rekonsiliasi Bank</TabsTrigger>
-          <TabsTrigger data-testid={LABOR.payrollTab} value="labor">Upah Harian</TabsTrigger>
-          <TabsTrigger data-testid={P56.financeTab} value="cancellations">
-            Pembatalan &amp; Refund
-          </TabsTrigger>
-          <TabsTrigger data-testid={P59.refundTab} value="refund-debt">
-            Utang Refund
-          </TabsTrigger>
           <TabsTrigger data-testid={FINANCE.tabReports} value="reports">Laporan</TabsTrigger>
           <TabsTrigger data-testid={FINANCE.tabConfig} value="config">Konfigurasi</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="mt-4"><FinanceDashboard /></TabsContent>
         <TabsContent value="cashflow" className="mt-4"><CashflowPanel /></TabsContent>
-        <TabsContent value="ar" className="mt-4"><ArPanel /></TabsContent>
-        <TabsContent value="deposits" className="mt-4"><DepositPanel /></TabsContent>
-        <TabsContent value="collections" className="mt-4">
-          <div className="space-y-6">
-            <CollectionsPanel />
-            <TrancheReminderPanel />
-            <LateFeeAutoPanel />
-          </div>
+        <TabsContent value="receivables" className="mt-4">
+          <SubTabs group="receivables" subs={RECEIVABLE_SUBS} active={subOf(RECEIVABLE_SUBS)}
+            onChange={(v) => setTab("receivables", v)} />
         </TabsContent>
-        <TabsContent value="waivers" className="mt-4"><LateFeeWaiverReport /></TabsContent>
-        <TabsContent value="ap" className="mt-4"><ApPanel /></TabsContent>
-        <TabsContent value="commissions" className="mt-4"><CommissionsPanel /></TabsContent>
+        <TabsContent value="payables" className="mt-4">
+          <SubTabs group="payables" subs={PAYABLE_SUBS} active={subOf(PAYABLE_SUBS)}
+            onChange={(v) => setTab("payables", v)} />
+        </TabsContent>
         <TabsContent value="bank" className="mt-4"><BankReconciliationTab /></TabsContent>
-        <TabsContent value="labor" className="mt-4">
-          <LaborPayrollPanel mode="finance" />
-        </TabsContent>
-        <TabsContent value="cancellations" className="mt-4"><CancellationsPanel /></TabsContent>
-        <TabsContent value="refund-debt" className="mt-4"><RefundDebtPanel /></TabsContent>
         <TabsContent value="reports" className="mt-4"><ReportsPanel /></TabsContent>
         <TabsContent value="config" className="mt-4"><ConfigPanel /></TabsContent>
       </Tabs>

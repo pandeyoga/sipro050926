@@ -24,6 +24,17 @@ async def summary(user: dict = Depends(require_permission("finance", "view"))):
     return {"data": await fe.finance_summary(user.get("org_id", ORG_ID))}
 
 
+@router.get("/drilldown/{key}")
+async def drilldown(key: str, bucket: str = None,
+                    user: dict = Depends(require_permission("finance", "view"))):
+    """Baris-baris penyusun satu angka KPI dashboard + tautan ke tabel terfilter (Fase 91)."""
+    import finance_drilldown as fd
+    try:
+        return {"data": await fd.drilldown(user.get("org_id", ORG_ID), key, bucket)}
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Kunci KPI tidak dikenal.")
+
+
 @router.get("/config/tax")
 async def get_tax(user: dict = Depends(require_permission("finance", "view"))):
     return {"data": serialize_doc(await fe.get_finance_config(user.get("org_id", ORG_ID)))}
