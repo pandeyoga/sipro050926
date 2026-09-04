@@ -380,7 +380,7 @@ async def units_listing(org: str = ORG_ID, *, project_id=None, cluster_id=None, 
                        ("construction_status", construction_status),
                        ("unit_type_code", unit_type_code)):
         if val:
-            query[field] = val
+            query[field] = {"$in": val.split(",")} if isinstance(val, str) and "," in val else val
     if q:
         query["$or"] = [{"code": {"$regex": q, "$options": "i"}},
                         {"type": {"$regex": q, "$options": "i"}},

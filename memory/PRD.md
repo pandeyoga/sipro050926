@@ -13,6 +13,21 @@ Bahasa produk & komunikasi: **Indonesia**.
 - Kredensial uji: `/app/memory/test_credentials.md` (sandi demo `Sipro#2026`).
 
 ## Riwayat implementasi (terbaru di atas)
+### 4 Sep 2026 — Fase 93: Drill-down Marketing & Detail Proyek, ekspor CSV popup — SELESAI
+- **Marketing**: kartu KPI di Kampanye › Kinerja (Biaya, Lead, Terkualifikasi, CPL, CAC, ROAS), Kampanye › Biaya
+  Iklan (Total biaya, Impresi, Klik, Lead platform, CPC) dan Atribusi › Funnel (Lead, Terkualifikasi, Booking,
+  Biaya terpetakan, CPL) bisa diklik → `DrilldownDialog`; kunci `ads:*` di `kpi_drilldown_ext.py`
+  (memakai match_campaign/FUNNEL_* yang sama dengan laporan). Metrik non-uang membawa `unit:'count'`.
+- **Bug pre-existing diperbaiki**: `ads_report.attribution` totals.spend digandakan per baris sumber (7×) →
+  kini per campaign_id unik; kolom tabel atribusi diberi label "Biaya kampanye".
+- **Detail Proyek**: 5 kartu (tersedia, dipegang/booking, terjual, nilai, progres) → popup daftar unit → Unit 360;
+  "Buka tabel terfilter" → `?tab=units&status=a,b,c` (UnitsTab baca filter dari URL, chip status ganda,
+  `/masterplan/units` menerima status ganda koma).
+- **Ekspor CSV**: tombol "Unduh CSV" di setiap popup rincian (Item;Keterangan;Status;Nilai;Skor;Tautan).
+- Uji: iteration_140 (temuan) → iteration_141 retest: backend 23/23 (`tests/test_p93.py`) + frontend lulus.
+  Catatan: warning React `<option>` dalam `<span>` berasal dari Radix Select (pre-existing).
+
+
 ### 4 Sep 2026 — Fase 92: Drill-down KPI Beranda, Pipeline Lead, Pembangunan — SELESAI
 - **Endpoint generik** `GET /drilldown/{key}` (`kpi_drilldown.py`, RBAC per kunci): tasks (scope/bucket/sla),
   leads (stage/band/sla/idle_days/new_hours), deals, projects, units_qc_hold, punch_open, retention_held,

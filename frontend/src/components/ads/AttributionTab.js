@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import DataTable from "@/components/patterns/DataTable";
 import FilterBar from "@/components/patterns/FilterBar";
 import KpiCard from "@/components/patterns/KpiCard";
+import DrilldownDialog from "@/components/patterns/DrilldownDialog";
 import MoneyText from "@/components/patterns/MoneyText";
 import ReferenceSelect from "@/components/patterns/ReferenceSelect";
 import { CostMetric } from "@/components/ads/CostStatus";
@@ -11,7 +12,7 @@ import useListQuery from "@/hooks/useListQuery";
 import { useReference } from "@/context/ReferenceContext";
 import { formatIDR, formatNumber } from "@/utils/formatters";
 import api from "@/services/apiClient";
-import { ADS, DT } from "@/constants/testIds";
+import { ADS, DT, P93 } from "@/constants/testIds";
 
 /**
  * AttributionTab — funnel atribusi bertingkat: kampanye → ad set → iklan → creative.
@@ -33,6 +34,9 @@ export default function AttributionTab() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [drillTarget, setDrillTarget] = useState(null);
+  const drill = (sub, label) => setDrillTarget({ key: `ads:${sub}`, label, params: {
+    ctx: "attribution", date_from: data?.range?.from, date_to: data?.range?.to } });
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -112,12 +116,16 @@ export default function AttributionTab() {
       exportValue: (r) => r.revenue || 0,
     },
     {
-      key: "spend", header: "Biaya", align: "right",
+      key: "spend", header: "Biaya kampanye", align: "right",
       render: (r) => (r.spend === null || r.spend === undefined ? (
         <span title={r.spend_note || ""} className="text-xs italic text-muted-foreground">
           {r.spend_note || "belum ada"}
         </span>
-      ) : <MoneyText value={r.spend} short />),
+      ) : (
+        <span title="Biaya seluruh kampanye (bukan alokasi per sumber) — kampanye yang sama di beberapa baris memakai angka yang sama">
+          <MoneyText value={r.spend} short />
+        </span>
+      )),
       exportValue: (r) => r.spend ?? "",
     },
     {
@@ -158,15 +166,19 @@ export default function AttributionTab() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <KpiCard label="Lead" value={formatNumber(t.leads || 0)} to="/leads"
-          drillLabel="Buka pipeline" />
-        <KpiCard label="Terkualifikasi" value={formatNumber(t.qualified || 0)} tone="amber" />
-        <KpiCard label="Booking" value={formatNumber(t.booked || 0)} tone="emerald" />
-        <KpiCard label="Biaya iklan terpetakan" value={<MoneyText value={t.spend} short />}
-          hint="hanya kampanye yang terdaftar" />
-        <KpiCard label="CPL gabungan" value={t.cpl ? formatIDR(t.cpl) : "belum lengkap"}
-          tone="sky" hint={t.cpl ? "biaya ÷ lead" : "data biaya belum lengkap"} />
+        <KpiCard label="Lead" value={formatNumber(t.leads || 0)} to="/leads" testId={`${P93.attrKpi}-leads`}
+          drillLabel="Buka pipeline" onOpen={() => drill("leads", "Semua lead dalam rentang atribusi")} />
+        <KpiCard label="Terkualifikasi" value={formatNumber(t.qualified || 0)} tone="amber" testId={`${P93.attrKpi}-qualified`}
+          onOpen={() => drill("qualified", "Lead terkualifikasi")} />
+        <KpiCard label="Booking" value={formatNumber(t.booked || 0)} tone="emerald" testId={`${P93.attrKpi}-booked`}
+          onOpen={() => drill("booked", "Lead yang booking")} />
+        <KpiCard label="Biaya iklan terpetakan" value={<MoneyText value={t.spend} short />} testId={`${P93.attrKpi}-spend`}
+          hint="hanya kampanye yang terdaftar" onOpen={() => drill("spend", "Biaya iklan terpetakan per kampanye")} />
+        <KpiCard label="CPL gabungan" value={t.cpl ? formatIDR(t.cpl) : "belum lengkap"} testId={`${P93.attrKpi}-cpl`}
+          tone="sky" hint={t.cpl ? "biaya ÷ lead" : "data biaya belum lengkap"}
+          onOpen={() => drill("spend", "CPL gabungan — biaya per kampanye (pembilang)")} />
       </div>
+      <DrilldownDialog target={drillTarget} onOpenChange={(o) => { if (!o) setDrillTarget(null); }} />
 
       <div data-testid={ADS.channelMix} className="grid gap-3 sm:grid-cols-3">
         {mix.map((m) => (

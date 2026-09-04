@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import DataTable from "@/components/patterns/DataTable";
 import ReferenceSelect from "@/components/patterns/ReferenceSelect";
@@ -14,12 +14,17 @@ import { MASTERPLAN } from "@/constants/testIds";
  */
 export default function UnitsTab({ projectId, clusters = [] }) {
   const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
   const [summary, setSummary] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [filters, setFilters] = useState({ cluster_id: "", status: "", construction_status: "" });
+  // Filter awal boleh datang dari URL (tautan "Buka tabel terfilter" popup rincian, Fase 93).
+  const [filters, setFilters] = useState({
+    cluster_id: params.get("cluster_id") || "", status: params.get("status") || "",
+    construction_status: params.get("construction_status") || "",
+  });
   const [query, setQuery] = useState({ q: "", sort: "code", direction: "asc", skip: 0, limit: 25 });
 
   const load = useCallback(async () => {
@@ -106,10 +111,20 @@ export default function UnitsTab({ projectId, clusters = [] }) {
               ))}
             </select>
             <div className="w-[170px]">
-              <ReferenceSelect group="unit_status" value={filters.status} allowEmpty
-                emptyLabel="Semua status jual" testId={MASTERPLAN.unitFilterStatus}
-                onChange={(v) => { setFilters({ ...filters, status: v });
-                  setQuery((q) => ({ ...q, skip: 0 })); }} />
+              {filters.status.includes(",") ? (
+                <button type="button" data-testid={MASTERPLAN.unitFilterStatusChip}
+                  className="flex h-9 w-full items-center justify-between rounded-md border bg-primary/5 px-2 text-xs font-medium text-primary"
+                  title="Filter beberapa status dari popup rincian — klik untuk menghapus"
+                  onClick={() => { setFilters({ ...filters, status: "" }); setQuery((q) => ({ ...q, skip: 0 }));
+                    const next = new URLSearchParams(params); next.delete("status"); setParams(next, { replace: true }); }}>
+                  <span className="truncate">Status: {filters.status.split(",").length} pilihan</span><span aria-hidden>×</span>
+                </button>
+              ) : (
+                <ReferenceSelect group="unit_status" value={filters.status} allowEmpty
+                  emptyLabel="Semua status jual" testId={MASTERPLAN.unitFilterStatus}
+                  onChange={(v) => { setFilters({ ...filters, status: v });
+                    setQuery((q) => ({ ...q, skip: 0 })); }} />
+              )}
             </div>
             <div className="w-[180px]">
               <ReferenceSelect group="construction_status" value={filters.construction_status}

@@ -105,6 +105,7 @@ export const MASTERPLAN = {
   unitSearch: "masterplan-unit-search",
   unitFilterCluster: "masterplan-unit-filter-cluster",
   unitFilterStatus: "masterplan-unit-filter-status",
+  unitFilterStatusChip: "masterplan-unit-filter-status-chip",
   unitFilterBuild: "masterplan-unit-filter-build",
   unitExport: "masterplan-unit-export",
   unitColumns: "masterplan-unit-columns",

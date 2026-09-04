@@ -5,6 +5,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import useTabParam from "@/hooks/useTabParam";
 import EntityHeader from "@/components/patterns/EntityHeader";
 import MetricCard from "@/components/patterns/MetricCard";
+import DrilldownDialog from "@/components/patterns/DrilldownDialog";
+import { P93 } from "@/constants/testIds";
+
+/** Kartu ringkasan proyek yang bisa diklik → popup daftar unit (Fase 93). */
+function Kpi({ id, onOpen, label, ...card }) {
+  return (
+    <button type="button" data-testid={`${P93.projectKpi}-${id}`} onClick={() => onOpen(id, label)}
+      className="group rounded-xl text-left outline-none transition-transform focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99]">
+      <MetricCard label={label} {...card} className="h-full ring-1 ring-transparent group-hover:ring-primary/50" />
+    </button>
+  );
+}
 import StructureTab from "@/components/projects/StructureTab";
 import TargetSummaryCard from "@/components/budget/TargetSummaryCard";
 import PermitCoveragePanel from "@/components/permits/PermitCoveragePanel";
@@ -32,6 +44,8 @@ export default function ProjectDetailPage() {
   const [tree, setTree] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [drill, setDrill] = useState(null);
+  const openDrill = (sub, label) => setDrill({ key: `project:${sub}`, label, params: { project_id: id } });
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -72,14 +86,17 @@ export default function ProjectDetailPage() {
               label: `${project.name || id}${project.code ? ` (${project.code})` : ""}` }} />
         ) : null} />
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard label="Unit tersedia" value={stats.available || 0} tone="emerald" />
-        <MetricCard label="Dipegang / booking" value={(stats.reserved || 0) + (stats.booked || 0)}
-          tone="amber" />
-        <MetricCard label="Terjual (kumulatif)" value={soldLike} tone="primary"
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <Kpi id="available" label="Unit tersedia" value={stats.available || 0} tone="emerald" onOpen={openDrill} />
+        <Kpi id="held" label="Dipegang / booking" value={(stats.reserved || 0) + (stats.booked || 0)}
+          tone="amber" onOpen={openDrill} />
+        <Kpi id="sold" label="Terjual (kumulatif)" value={soldLike} tone="primary" onOpen={openDrill}
           hint={`absorpsi ${stats.absorption_pct || 0}%`} />
-        <MetricCard label="Nilai unit" value={formatIDR(stats.value || 0)} tone="indigo" />
+        <Kpi id="value" label="Nilai unit" value={formatIDR(stats.value || 0)} tone="indigo" onOpen={openDrill} />
+        <Kpi id="progress" label="Progres konstruksi" value={`${project.construction_progress || 0}%`} tone="sky"
+          hint="rata-rata unit yang dibangun" onOpen={openDrill} />
       </div>
+      <DrilldownDialog target={drill} onOpenChange={(o) => { if (!o) setDrill(null); }} />
 
       {/* Fase 45 — kartu target proyek. Diletakkan di sini karena pertanyaan pertama saat
           membuka satu proyek adalah "targetnya berapa dan sudah sejauh mana", sebelum

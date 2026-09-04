@@ -310,7 +310,10 @@ async def attribution(*, org_id: str = ORG_ID, level: str = "campaign", date_fro
     totals = {k: sum(int(r.get(k) or 0) for r in rows)
               for k in ("leads", "hot", "qualified", "booked", "revenue", "conversions",
                         "conversion_value")}
-    totals["spend"] = sum(int(r["spend"] or 0) for r in rows if r.get("spend"))
+    # Biaya kampanye dihitung SEKALI per kampanye — baris dikelompokkan per (sumber, kampanye)
+    # sehingga satu kampanye bisa muncul di beberapa baris; menjumlahkan r["spend"] menggandakan.
+    seen = {r["campaign_id"] for r in rows if r.get("spend") is not None and r.get("campaign_id")}
+    totals["spend"] = sum(int((spend_map.get(cid) or {}).get("spend") or 0) for cid in seen)
     totals["cpl"] = (int(round(totals["spend"] / totals["leads"]))
                      if totals["spend"] and totals["leads"] else None)
     return {"rows": rows, "totals": totals, "level": level,

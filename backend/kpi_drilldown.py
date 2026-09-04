@@ -16,7 +16,7 @@ PERMISSION = {
     "tasks": ("work_tasks", "view"), "leads": ("leads", "view"), "deals": ("deals", "view"),
     "projects": ("projects", "view"), "units_qc_hold": ("construction", "view"),
     "punch_open": ("construction", "view"), "build": ("construction", "view"),
-    "board": ("construction", "view"),
+    "board": ("construction", "view"), "ads": ("ads", "view"), "project": ("projects", "view"),
     "retention_held": ("finance", "view"),
 }
 FINANCE_KEYS = {"ar_outstanding", "ar_overdue", "ar_bucket", "ap_outstanding", "ap_pending",
@@ -251,14 +251,19 @@ async def drilldown(user: dict, key: str, params: dict) -> dict:
     root, _, sub = key.partition(":")
     fn = {"tasks": _tasks, "leads": _leads, "deals": _deals, "projects": _projects,
           "units_qc_hold": _units_qc_hold, "punch_open": _punch_open}.get(root)
+    show_total = True
     if root == "build":
         title, href_all, rows = await _build(user, params, sub)
     elif root == "board":
         title, href_all, rows = await _board(user, params, sub)
+    elif root in ("ads", "project"):
+        import kpi_drilldown_ext as ext
+        title, href_all, rows, show_total = await (ext.ads if root == "ads" else ext.project)(user, sub, params)
     elif fn:
         title, href_all, rows = await fn(user, params)
     else:
         raise KeyError(key)
     total = sum(int(r.get("amount") or 0) for r in rows)
-    return {"key": key, "title": title, "rows": rows, "total": total if total else None,
-            "count": len(rows), "href_all": href_all}
+    unit = "count" if rows and all(r.get("unit") == "count" for r in rows) else "idr"
+    return {"key": key, "title": title, "rows": rows, "total": total if (total and show_total) else None,
+            "unit": unit, "count": len(rows), "href_all": href_all}

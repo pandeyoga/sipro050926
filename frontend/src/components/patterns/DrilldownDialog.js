@@ -1,14 +1,25 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowUpRight, ChevronRight } from "lucide-react";
+import { ArrowUpRight, ChevronRight, Download } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import StatusPill from "@/components/patterns/StatusPill";
 import { LoadingCards, ErrorState } from "@/components/patterns/StateViews";
 import { formatIDR } from "@/utils/formatters";
+import { downloadCsv } from "@/utils/tableCsv";
 import api from "@/services/apiClient";
-import { P91 } from "@/constants/testIds";
+import { P91, P93 } from "@/constants/testIds";
+
+// Kolom CSV = persis yang terlihat di popup (judul, keterangan, status, nilai, skor, tautan).
+const CSV_COLUMNS = [
+  { key: "title", header: "Item" },
+  { key: "subtitle", header: "Keterangan" },
+  { key: "status", header: "Status" },
+  { key: "amount", header: "Nilai" },
+  { key: "score", header: "Skor" },
+  { key: "href", header: "Tautan", exportValue: (r) => (r.href ? `${window.location.origin}${r.href}` : "") },
+];
 
 /**
  * DrilldownDialog — popup rincian SATU angka KPI (pola yang sama di Beranda, Lead,
@@ -30,6 +41,8 @@ export default function DrilldownDialog({ target, onOpenChange, onRow }) {
 
   const go = (href) => { onOpenChange(false); if (href) navigate(href); };
   const click = (r) => { if (onRow) { onOpenChange(false); onRow(r); } else go(r.href); };
+  // Metrik non-uang (klik, impresi, lead platform) tidak boleh dirender sebagai rupiah.
+  const fmt = (v, r) => ((r?.unit || data?.unit) === "count" ? Number(v || 0).toLocaleString("id-ID") : formatIDR(v));
 
   return (
     <Dialog open={!!target} onOpenChange={onOpenChange}>
@@ -37,7 +50,7 @@ export default function DrilldownDialog({ target, onOpenChange, onRow }) {
         <DialogHeader>
           <DialogTitle>{data?.title || target?.label || "Rincian"}</DialogTitle>
           <DialogDescription>
-            {data ? <>{data.count} baris{data.total ? <> · total <b className="tabular-nums text-foreground">{formatIDR(data.total)}</b></> : null}</>
+            {data ? <>{data.count} baris{data.total ? <> · total <b className="tabular-nums text-foreground">{fmt(data.total)}</b></> : null}</>
               : "Memuat baris penyusun angka ini…"}
           </DialogDescription>
         </DialogHeader>
@@ -58,17 +71,25 @@ export default function DrilldownDialog({ target, onOpenChange, onRow }) {
                 </div>
                 {r.score != null ? <StatusPill status={r.score_band} label={`${r.score}`} /> : null}
                 {r.status ? <StatusPill status={r.status} group={r.status_group || undefined} /> : null}
-                {r.amount != null ? <span className="w-36 shrink-0 text-right text-sm font-semibold tabular-nums">{formatIDR(r.amount)}</span> : null}
+                {r.amount != null ? <span className="w-36 shrink-0 text-right text-sm font-semibold tabular-nums">{fmt(r.amount, r)}</span> : null}
                 <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
               </button>
             ))}
           </div>
         ) : null}
-        {data?.href_all ? (
-          <div className="flex justify-end">
-            <Button size="sm" onClick={() => go(data.href_all)} data-testid={P91.kpiDialogAll}>
-              Buka tabel terfilter <ArrowUpRight className="ml-1 h-4 w-4" />
-            </Button>
+        {data?.href_all || data?.rows?.length ? (
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {data?.rows?.length ? (
+              <Button size="sm" variant="outline" data-testid={P93.drillCsv}
+                onClick={() => downloadCsv(CSV_COLUMNS, data.rows, `rincian-${(data.key || "kpi").replace(/[^a-z0-9_-]/gi, "-")}`)}>
+                <Download className="mr-1 h-4 w-4" /> Unduh CSV
+              </Button>
+            ) : null}
+            {data?.href_all ? (
+              <Button size="sm" onClick={() => go(data.href_all)} data-testid={P91.kpiDialogAll}>
+                Buka tabel terfilter <ArrowUpRight className="ml-1 h-4 w-4" />
+              </Button>
+            ) : null}
           </div>
         ) : null}
       </DialogContent>

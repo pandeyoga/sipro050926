@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import DataTable from "@/components/patterns/DataTable";
 import FilterBar from "@/components/patterns/FilterBar";
 import KpiCard from "@/components/patterns/KpiCard";
+import DrilldownDialog from "@/components/patterns/DrilldownDialog";
 import MoneyText from "@/components/patterns/MoneyText";
 import StatusPill from "@/components/patterns/StatusPill";
 import { CostMetric, CostStatusBadge, SourceLabels } from "@/components/ads/CostStatus";
@@ -12,7 +13,7 @@ import useListQuery from "@/hooks/useListQuery";
 import { useReference } from "@/context/ReferenceContext";
 import { formatIDR, formatNumber } from "@/utils/formatters";
 import api from "@/services/apiClient";
-import { ADS, DT } from "@/constants/testIds";
+import { ADS, DT, P93 } from "@/constants/testIds";
 
 /**
  * PerformanceTab — **kinerja kampanye**: biaya, lead, kualifikasi, booking, pendapatan,
@@ -36,6 +37,9 @@ export default function PerformanceTab() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [drillTarget, setDrillTarget] = useState(null);
+  const drill = (sub, label) => setDrillTarget({ key: `ads:${sub}`, label, params: {
+    date_from: data?.range?.from, date_to: data?.range?.to, platform: apiParams.platform, status: apiParams.status } });
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -183,20 +187,25 @@ export default function PerformanceTab() {
       </p>
 
       <div data-testid={ADS.perfKpi} className="grid grid-cols-2 gap-3 lg:grid-cols-6">
-        <KpiCard label="Biaya iklan" value={<MoneyText value={t.spend} short />}
-          hint={`${t.campaigns || 0} kampanye`} />
-        <KpiCard label="Lead" value={formatNumber(t.leads || 0)} tone="sky" to="/leads"
-          drillLabel="Buka pipeline" />
-        <KpiCard label="Terkualifikasi" value={formatNumber(t.qualified || 0)} tone="amber"
-          hint={t.qualified_rate === null ? "—" : `${t.qualified_rate}% dari lead`} />
-        <KpiCard label="CPL"
+        <KpiCard label="Biaya iklan" value={<MoneyText value={t.spend} short />} testId={`${P93.adsKpi}-spend`}
+          hint={`${t.campaigns || 0} kampanye`} onOpen={() => drill("spend", "Biaya iklan per kampanye")} />
+        <KpiCard label="Lead" value={formatNumber(t.leads || 0)} tone="sky" to="/leads" testId={`${P93.adsKpi}-leads`}
+          drillLabel="Buka pipeline" onOpen={() => drill("leads", "Lead dari kampanye")} />
+        <KpiCard label="Terkualifikasi" value={formatNumber(t.qualified || 0)} tone="amber" testId={`${P93.adsKpi}-qualified`}
+          hint={t.qualified_rate === null ? "—" : `${t.qualified_rate}% dari lead`}
+          onOpen={() => drill("qualified", "Lead terkualifikasi")} />
+        <KpiCard label="CPL" testId={`${P93.adsKpi}-cpl`}
           value={t.cpl ? formatIDR(t.cpl) : "belum lengkap"} tone="primary"
-          hint={t.cpl ? "biaya ÷ lead" : t.cost_note || "data biaya belum lengkap"} />
-        <KpiCard label="CAC" value={t.cac ? formatIDR(t.cac) : "belum lengkap"} tone="rose"
-          hint={t.cac ? "biaya ÷ booking" : "butuh biaya + booking"} />
-        <KpiCard label="ROAS" value={t.roas ? `${t.roas}×` : "belum lengkap"} tone="emerald"
-          hint={t.roas ? "pendapatan ÷ biaya" : "butuh biaya + pendapatan"} />
+          hint={t.cpl ? "biaya ÷ lead" : t.cost_note || "data biaya belum lengkap"}
+          onOpen={() => drill("spend", "CPL — biaya iklan per kampanye (pembilang)")} />
+        <KpiCard label="CAC" value={t.cac ? formatIDR(t.cac) : "belum lengkap"} tone="rose" testId={`${P93.adsKpi}-cac`}
+          hint={t.cac ? "biaya ÷ booking" : "butuh biaya + booking"}
+          onOpen={() => drill("booked", "CAC — lead yang booking (penyebut)")} />
+        <KpiCard label="ROAS" value={t.roas ? `${t.roas}×` : "belum lengkap"} tone="emerald" testId={`${P93.adsKpi}-roas`}
+          hint={t.roas ? "pendapatan ÷ biaya" : "butuh biaya + pendapatan"}
+          onOpen={() => drill("booked", "ROAS — lead yang booking (pendapatan)")} />
       </div>
+      <DrilldownDialog target={drillTarget} onOpenChange={(o) => { if (!o) setDrillTarget(null); }} />
 
       {t.campaigns_without_cost || t.campaigns_partial_cost ? (
         <div data-testid={ADS.costWarning}

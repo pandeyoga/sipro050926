@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import DataTable from "@/components/patterns/DataTable";
 import FilterBar from "@/components/patterns/FilterBar";
 import KpiCard from "@/components/patterns/KpiCard";
+import DrilldownDialog from "@/components/patterns/DrilldownDialog";
 import MoneyText from "@/components/patterns/MoneyText";
 import ChartFrame from "@/components/patterns/ChartFrame";
 import ReferenceSelect from "@/components/patterns/ReferenceSelect";
@@ -20,7 +21,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useReference } from "@/context/ReferenceContext";
 import { formatIDR, formatNumber } from "@/utils/formatters";
 import api from "@/services/apiClient";
-import { ADS, DT } from "@/constants/testIds";
+import { ADS, DT, P93 } from "@/constants/testIds";
 
 /**
  * SpendTab — **biaya iklan harian** (Fase 43 §5).
@@ -49,6 +50,11 @@ export default function SpendTab() {
   const [entryOpen, setEntryOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [drillTarget, setDrillTarget] = useState(null);
+  const drill = (sub, label) => setDrillTarget({ key: `ads:${sub}`, label, params: {
+    date_from: data?.data?.range?.from || apiParams.date_from, date_to: data?.data?.range?.to || apiParams.date_to,
+    platform: Array.isArray(apiParams.platform) ? apiParams.platform.join(",") : apiParams.platform,
+    campaign_id: apiParams.campaign_id } });
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -191,18 +197,22 @@ export default function SpendTab() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <KpiCard label="Total biaya" value={<MoneyText value={totals.spend} short />}
-          hint={`${totals.rows || 0} baris · ${totals.days || 0} hari terisi`} />
-        <KpiCard label="Impresi" value={formatNumber(totals.impressions || 0)} tone="sky" />
-        <KpiCard label="Klik" value={formatNumber(totals.clicks || 0)} tone="sky"
+        <KpiCard label="Total biaya" value={<MoneyText value={totals.spend} short />} testId={`${P93.spendKpi}-spend`}
+          hint={`${totals.rows || 0} baris · ${totals.days || 0} hari terisi`} onOpen={() => drill("spend", "Total biaya per kampanye")} />
+        <KpiCard label="Impresi" value={formatNumber(totals.impressions || 0)} tone="sky" testId={`${P93.spendKpi}-impressions`}
+          onOpen={() => drill("impressions", "Impresi per kampanye")} />
+        <KpiCard label="Klik" value={formatNumber(totals.clicks || 0)} tone="sky" testId={`${P93.spendKpi}-clicks`}
           hint={totals.impressions
-            ? `CTR ${((totals.clicks / totals.impressions) * 100).toFixed(2)}%` : "CTR —"} />
-        <KpiCard label="Lead menurut platform" value={formatNumber(totals.leads_platform || 0)}
-          tone="amber" hint="dibandingkan lead nyata di tab Kinerja" />
-        <KpiCard label="Biaya per klik"
+            ? `CTR ${((totals.clicks / totals.impressions) * 100).toFixed(2)}%` : "CTR —"}
+          onOpen={() => drill("clicks", "Klik per kampanye")} />
+        <KpiCard label="Lead menurut platform" value={formatNumber(totals.leads_platform || 0)} testId={`${P93.spendKpi}-leads_platform`}
+          tone="amber" hint="dibandingkan lead nyata di tab Kinerja" onOpen={() => drill("leads_platform", "Lead menurut platform, per kampanye")} />
+        <KpiCard label="Biaya per klik" testId={`${P93.spendKpi}-cpc`}
           value={totals.clicks ? formatIDR(Math.round(totals.spend / totals.clicks)) : "—"}
-          hint={totals.clicks ? "total biaya ÷ total klik" : "klik belum dilaporkan"} />
+          hint={totals.clicks ? "total biaya ÷ total klik" : "klik belum dilaporkan"}
+          onOpen={() => drill("clicks", "Biaya per klik — klik per kampanye (penyebut)")} />
       </div>
+      <DrilldownDialog target={drillTarget} onOpenChange={(o) => { if (!o) setDrillTarget(null); }} />
 
       <ChartFrame testId={ADS.spendChart} title="Biaya iklan per periode"
         description={`Agregasi ${labelOf("ads_period", period)} dari baris biaya — `
